@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/un.h>
+/* #include <sys/un.h> */
 #include <unistd.h>
 #include <string.h>
 
@@ -97,7 +97,6 @@ int main(void)
 	
 	connect(clientsocketfd, (struct sockaddr *)&serveraddr, sizeof(struct sockaddr_in));
 		
-
 	clientssl = SSL_new(ssl_client_ctx);
 	if(!clientssl)
 	{
@@ -139,5 +138,6 @@ int main(void)
 	close(clientsocketfd);
 	SSL_free(clientssl);
 	SSL_CTX_free(ssl_client_ctx);
+    
 	return 0;	
 }
