@@ -8,12 +8,10 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define SSL_CLIENT_RSA_CERT	"/home/nmathew/cacert/ssl_client.crt"
-#define SSL_CLIENT_RSA_KEY	"/home/nmathew/cacert/ssl_client.key"
-#define SSL_CLIENT_RSA_CA_CERT	"/home/nmathew/cacert/ca.crt"
-#define SSL_CLIENT_RSA_CA_PATH	"/home/nmathew/cacert/"
-
-#define SSL_SERVER_ADDR		"/home/nmathew/ssl_server"
+#define SSL_CLIENT_RSA_CERT	"/home/labia/certs/client.crt"
+#define SSL_CLIENT_RSA_KEY	"/home/labia/certs/client.key"
+#define SSL_CLIENT_RSA_CA_CERT	"/home/labia/certs/ca.crt"
+#define SSL_CLIENT_RSA_CA_PATH	"/home/labia/certs/"
 
 #define OFF	0
 #define ON	1
@@ -24,7 +22,8 @@ int main(void)
 	SSL_METHOD *client_meth;
 	SSL_CTX *ssl_client_ctx;
 	int clientsocketfd;
-	struct sockaddr_un serveraddr;
+	/* struct sockaddr_un serveraddr; */
+	struct sockaddr_in serveraddr;
 	int handshakestatus;
 	SSL *clientssl;
 	char buffer[1024] = "Client Hello World";
@@ -72,7 +71,19 @@ int main(void)
 		SSL_CTX_set_verify(ssl_client_ctx, SSL_VERIFY_PEER, NULL);
 		SSL_CTX_set_verify_depth(ssl_client_ctx, 1);
 	}
+	
+	if((clientsocketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	{
+		printf("Error on socket creation\n");
+		return -1;
+	}
+    
+    memset(&serveraddr, 0, sizeof(struct sockaddr_in));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_port = htons(443);
+    serveraddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
+/*
 	if((clientsocketfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
 	{
 		printf("Error on socket creation\n");
@@ -82,8 +93,9 @@ int main(void)
 	serveraddr.sun_family = AF_UNIX;
 	serveraddr.sun_path[0] = 0;
 	strncpy(&(serveraddr.sun_path[1]), SSL_SERVER_ADDR, strlen(SSL_SERVER_ADDR) + 1);
+*/
 	
-	connect(clientsocketfd, (struct sockaddr *)&serveraddr, sizeof(struct sockaddr_un));
+	connect(clientsocketfd, (struct sockaddr *)&serveraddr, sizeof(struct sockaddr_in));
 		
 
 	clientssl = SSL_new(ssl_client_ctx);
