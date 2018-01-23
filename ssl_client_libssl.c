@@ -29,7 +29,7 @@ int main()
     struct sockaddr_in addr;
 
     SSL *ssl;
-    char buffer[1024] = "Client Hello World";
+    char buf[1024] = "Client Hello World";
     int ret;
     
     SSL_library_init();
