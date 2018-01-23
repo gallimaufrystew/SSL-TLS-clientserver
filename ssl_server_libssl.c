@@ -9,8 +9,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define TRUE 0
-#define FALSE  1
+#define TRUE   1
+#define FALSE  0
 
 #define CUSTOM_EXT_TYPE_1000 10000
 
@@ -31,7 +31,6 @@ int main()
     SSL *ssl = NULL;
     SSL_CTX *ssl_ctx;
     
-    
     SSL_library_init();
     SSL_load_error_strings();
 
@@ -41,7 +40,6 @@ int main()
     addr.sin_addr.s_addr = htonl(INADDR_ANY);/* inet_addr("127.0.0.1") */
 
     fd = socket(AF_INET, SOCK_STREAM, 0);
-
     if (fd < 0) {
         perror("socket() failed");
         exit(EXIT_FAILURE);
@@ -80,7 +78,6 @@ int main()
 #endif
         
         if ((ret = SSL_accept(ssl)) != 1) {
-
             ERR_print_errors_fp(stderr);
             close(client);
             SSL_free(ssl);
@@ -93,11 +90,11 @@ int main()
                 long ret = SSL_get_verify_result(ssl);
                 if (ret != X509_V_OK) {
                     ERR_print_errors_fp(stderr);
-                    printf("Certificate Verify Failed\n");
+                    printf("verify failed\n");
                 }
                 X509_free(cert);
             } else {
-                printf("There is no client certificate\n");
+                printf("no peer certificate\n");
             }
         }
         
@@ -213,8 +210,7 @@ SSL_CTX *create_ssl_ctx(const char *sign_algo)
         ERR_print_errors_fp(stderr);
         return NULL;
     }
-    
-    
+        
 #if (1)
     SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
     // we can string certs together to form a cert-chain
@@ -224,7 +220,6 @@ SSL_CTX *create_ssl_ctx(const char *sign_algo)
         return NULL;
     }
     SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
-
     //SSL_CTX_set_verify_depth(ssl_ctx, 1);
     //SSL_CTX_set_tlsext_servername_callback(ssl_ctx, svr_name_callback);
 #endif
@@ -235,11 +230,11 @@ SSL_CTX *create_ssl_ctx(const char *sign_algo)
 static int ana_ext_callback(SSL *ssl, unsigned int ext_type,
                             const unsigned char *in,size_t inlen, int *al, void *arg)
 {
-	char ext_buf[2048] = {0};
-	char *tag = NULL;
+    char ext_buf[2048] = {0};
+    char *tag = NULL;
     char cust_tag[1024] = {0};
     
-	memcpy(ext_buf, in, inlen);
+    memcpy(ext_buf, in, inlen);
 	
 	printf("---ext parse callback---\n");
 
@@ -257,15 +252,13 @@ static int ana_ext_callback(SSL *ssl, unsigned int ext_type,
 
 static int cert_callback(SSL *ssl, void *a)
 {
-
     printf("------certificate callback %p-------\n",ssl_new_ctx);
 
     //SSL_set_SSL_CTX(ssl, ssl_new_ctx);
 
 #if (0)    
     SSL_set_verify(ssl,SSL_CTX_get_verify_mode(ssl_new_ctx),
-                 SSL_CTX_get_verify_callback(ssl_new_ctx));
-    
+				   SSL_CTX_get_verify_callback(ssl_new_ctx));
     SSL_set_options(ssl,SSL_CTX_get_options(ssl_new_ctx));
 #endif
     
