@@ -9,8 +9,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define TRUE   0
-#define FALSE  1
+#define TRUE   1
+#define FALSE  0
 
 #define CUSTOM_EXT_TYPE_1000 10000
 
@@ -32,14 +32,11 @@ int main()
     char buffer[1024] = "Client Hello World";
     int ret;
     
-    
     SSL_library_init();
     SSL_load_error_strings();
-
     OpenSSL_add_all_algorithms();
 
     ssl_ctx = create_ssl_ctx("sha2");
-
     if (!ssl_ctx) {
         ERR_print_errors_fp(stderr);
         return -1;
@@ -79,20 +76,20 @@ int main()
         if (cert) {
             long ret = SSL_get_verify_result(ssl);
             if (ret != X509_V_OK) {
-                printf("Certificate Verify Failed\n");
+                printf("verify failed\n");
                 goto fail;
             } else {
-                printf("Verify OK\n");
+                printf("verify ok\n");
             }
             X509_free(cert);
         } else {
-            printf("There is no client certificate\n");
+            printf("no peer certificate\n");
         }
     }
     
-    SSL_write(ssl, buffer, strlen(buffer) + 1);
-    SSL_read(ssl, buffer, sizeof(buffer));
-    printf("SSL server send %s\n", buffer);
+    SSL_write(ssl, buf, strlen(buf) + 1);
+    SSL_read(ssl, buf, sizeof(buf));
+    printf("SSL server send [%s]\n", buf);
     
 fail:    
     SSL_shutdown(ssl);
@@ -202,7 +199,6 @@ SSL_CTX *create_ssl_ctx(const char *sign_algo)
     }
     SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
     //SSL_CTX_set_verify_depth(ssl_ctx, 1);
-
     //SSL_CTX_set_tlsext_servername_callback(ssl_ctx, svr_name_callback);
 
     return ssl_ctx;
