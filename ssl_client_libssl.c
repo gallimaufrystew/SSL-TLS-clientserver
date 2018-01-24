@@ -1,13 +1,42 @@
+#ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #include <windows.h>
+    #include <process.h>
+#else
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <sys/un.h>
+    #include <sys/stat.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+#endif
+
+#ifdef _WIN32
+#define sock_close closesocket
+#endif
+
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
+#include <string>
+#include <vector>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+
+#ifdef _WIN32
+    #include "openssl\applink.c"
+#endif
+
+#ifdef _WIN32
+    #pragma comment(lib,"ws2_32.lib")
+    #pragma comment(lib,"libsslMDd.lib")
+    #pragma comment(lib,"libcryptoMDd.lib")
+#endif
 
 #define TRUE   1
 #define FALSE  0
@@ -29,14 +58,25 @@ int main()
     struct sockaddr_in addr;
 
     SSL *ssl;
-    char buf[1024] = "Client Hello World";
+    char buf[1024] = "hello,server";
     int ret;
+    
     
     SSL_library_init();
     SSL_load_error_strings();
+
     OpenSSL_add_all_algorithms();
 
+#ifdef _WIN32
+    WSADATA ws_data;
+    if (WSAStartup(MAKEWORD(2,2), &ws_data) != 0) {
+        fprintf(stderr, "WSAStartup() fail: %d\n", GetLastError());
+        return -1;
+    }
+#endif
+
     ssl_ctx = create_ssl_ctx("sha2");
+
     if (!ssl_ctx) {
         ERR_print_errors_fp(stderr);
         return -1;
@@ -54,7 +94,7 @@ int main()
     memset(&addr, 0, sizeof(struct sockaddr_in));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(4433);
-    addr.sin_addr.s_addr = INADDR_ANY;//inet_addr("10.123.162.58");/*  */
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");/* INADDR_ANY */
 
     connect(fd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
 
@@ -87,15 +127,22 @@ int main()
         }
     }
     
-    SSL_write(ssl, buf, strlen(buf) + 1);
+    SSL_write(ssl, buf, strlen(buf));
+
+	memset(buf,0,sizeof(buf));
     SSL_read(ssl, buf, sizeof(buf));
-    printf("SSL server send [%s]\n", buf);
+
+    printf("received [%s]\n", buf);
     
 fail:    
     SSL_shutdown(ssl);
-    close(fd);
+    sock_close(fd);
     SSL_free(ssl);
     SSL_CTX_free(ssl_ctx);
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
 
     return 0;
 }
@@ -103,8 +150,7 @@ fail:
 static int add_cust_ext_callback(SSL *s, unsigned int ext_type,
                                  const unsigned char **out,
                                  size_t *outlen, int *al, void *arg)
-{
-    
+{ 
     printf("-----add cust ext-----\n");
     
     *out = (const unsigned char *)cust_str;
