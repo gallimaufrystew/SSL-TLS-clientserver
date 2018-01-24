@@ -58,7 +58,7 @@ int main()
     struct sockaddr_in addr;
 
     SSL *ssl;
-    char buf[1024] = "hello,server";
+    char buf[1024] = "<----Hello";
     int ret;
     
     
@@ -129,7 +129,7 @@ int main()
     
     SSL_write(ssl, buf, strlen(buf));
 
-	memset(buf,0,sizeof(buf));
+    memset(buf,0,sizeof(buf));
     SSL_read(ssl, buf, sizeof(buf));
 
     printf("received [%s]\n", buf);
