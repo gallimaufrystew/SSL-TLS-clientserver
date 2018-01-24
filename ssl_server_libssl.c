@@ -1,13 +1,42 @@
+#ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #include <windows.h>
+    #include <process.h>
+#else
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <sys/un.h>
+    #include <sys/stat.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+#endif
+
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
+#include <string>
+#include <vector>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+
+#ifdef _WIN32
+    #include "openssl\applink.c"
+#endif
+
+#ifdef _WIN32
+#define sock_close closesocket
+#endif
+
+#ifdef _WIN32
+    #pragma comment(lib,"ws2_32.lib")
+    #pragma comment(lib,"libsslMDd.lib")
+    #pragma comment(lib,"libcryptoMDd.lib")
+#endif
 
 #define TRUE   1
 #define FALSE  0
@@ -31,8 +60,17 @@ int main()
     SSL *ssl = NULL;
     SSL_CTX *ssl_ctx;
     
+    
     SSL_library_init();
     SSL_load_error_strings();
+
+#ifdef _WIN32
+    WSADATA  ws_data;
+    if (WSAStartup(MAKEWORD(2, 2), &ws_data)) {
+        fprintf(stderr, "WSAStartup() fail: %d\n", GetLastError());
+        return -1;
+    }
+#endif
 
     memset(&addr, 0, sizeof(struct sockaddr_in));
     addr.sin_family = AF_INET;
@@ -60,7 +98,7 @@ int main()
     
     for ( ;; ) {
         
-        char buf[1024];
+		char buf[1024] = {0};
         int rsize = 0,alen,ret;
         int client;
 
@@ -78,8 +116,9 @@ int main()
 #endif
         
         if ((ret = SSL_accept(ssl)) != 1) {
+
             ERR_print_errors_fp(stderr);
-            close(client);
+            sock_close(client);
             SSL_free(ssl);
             continue;
         }
@@ -90,7 +129,9 @@ int main()
                 long ret = SSL_get_verify_result(ssl);
                 if (ret != X509_V_OK) {
                     ERR_print_errors_fp(stderr);
-                    printf("verify failed\n");
+                    printf("verify client failed\n");
+                } else {
+                    printf("verify client ok\n");
                 }
                 X509_free(cert);
             } else {
@@ -99,18 +140,27 @@ int main()
         }
         
         rsize = SSL_read(ssl, buf, sizeof(buf));
-        alen = strlen("Appended by SSL server");
-        strncpy(&buf[rsize], "Appended by SSL server", alen);
-        buf[rsize + alen] = '\0';
+        
+        printf("received [%d][%s]\n",rsize,buf);
+        
+        alen = strlen("::Appended by SSL server::");
+        strcat(buf,"::Appended by SSL server::");
+
         SSL_write(ssl, buf, rsize + alen + 1);
+
         SSL_shutdown(ssl);
-        close(client);
+        sock_close(client);
         SSL_free(ssl);
     }
-    
-    close(fd);
+
     SSL_CTX_free(ssl_ctx);
     SSL_CTX_free(ssl_new_ctx);
+
+    sock_close(fd);
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
     
     return 0;
 }
@@ -210,7 +260,8 @@ SSL_CTX *create_ssl_ctx(const char *sign_algo)
         ERR_print_errors_fp(stderr);
         return NULL;
     }
-        
+    
+    
 #if (1)
     SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
     // we can string certs together to form a cert-chain
@@ -220,6 +271,7 @@ SSL_CTX *create_ssl_ctx(const char *sign_algo)
         return NULL;
     }
     SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
+
     //SSL_CTX_set_verify_depth(ssl_ctx, 1);
     //SSL_CTX_set_tlsext_servername_callback(ssl_ctx, svr_name_callback);
 #endif
@@ -230,11 +282,11 @@ SSL_CTX *create_ssl_ctx(const char *sign_algo)
 static int ana_ext_callback(SSL *ssl, unsigned int ext_type,
                             const unsigned char *in,size_t inlen, int *al, void *arg)
 {
-    char ext_buf[2048] = {0};
-    char *tag = NULL;
+	char ext_buf[2048] = {0};
+	char *tag = NULL;
     char cust_tag[1024] = {0};
     
-    memcpy(ext_buf, in, inlen);
+	memcpy(ext_buf, in, inlen);
 	
 	printf("---ext parse callback---\n");
 
@@ -252,13 +304,15 @@ static int ana_ext_callback(SSL *ssl, unsigned int ext_type,
 
 static int cert_callback(SSL *ssl, void *a)
 {
+
     printf("------certificate callback %p-------\n",ssl_new_ctx);
 
     //SSL_set_SSL_CTX(ssl, ssl_new_ctx);
 
 #if (0)    
     SSL_set_verify(ssl,SSL_CTX_get_verify_mode(ssl_new_ctx),
-				   SSL_CTX_get_verify_callback(ssl_new_ctx));
+                 SSL_CTX_get_verify_callback(ssl_new_ctx));
+    
     SSL_set_options(ssl,SSL_CTX_get_options(ssl_new_ctx));
 #endif
     
