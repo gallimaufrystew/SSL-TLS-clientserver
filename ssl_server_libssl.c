@@ -34,8 +34,8 @@
 
 #ifdef _WIN32
     #pragma comment(lib,"ws2_32.lib")
-    #pragma comment(lib,"libsslMDd.lib")
-    #pragma comment(lib,"libcryptoMDd.lib")
+    #pragma comment(lib,"libcrypto.lib")
+    #pragma comment(lib,"libssl.lib")
 #endif
 
 #define TRUE   1
