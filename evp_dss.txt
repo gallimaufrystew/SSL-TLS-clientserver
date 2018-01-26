@@ -1,0 +1,7 @@
+
+EVP_dss() and EVP_dss1() return EVP_MD structures for SHA and SHA1 digest algorithms but using DSS (DSA) 
+for the signature algorithm. Note: there is no need to use these pseudo-digests in OpenSSL 1.0.0 and later, 
+they are however retained for compatibility.
+
+The link between digests and signing algorithms was fixed in OpenSSL 1.0 and later, so now EVP_sha1() can be 
+used with RSA and DSA; there is no need to use EVP_dss1() any more.
